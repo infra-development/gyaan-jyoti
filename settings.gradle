@@ -1,2 +1,9 @@
 rootProject.name = 'gyaan-jyoti'
 
+// Include submodules
+include("java-sutra", "scala-sutra")
+
+// Set project directories for submodules
+project(":java-sutra").projectDir = file("modules/java-sutra")
+project(":scala-sutra").projectDir = file("modules/scala-sutra")
+
