@@ -1,0 +1,6 @@
+[submodule "modules/java-sutra"]
+	path = modules/java-sutra
+	url = git@github.com:infra-development/java-sutra.git
+[submodule "modules/scala-sutra"]
+	path = modules/scala-sutra
+	url = git@github.com:infra-development/scala-sutra.git
