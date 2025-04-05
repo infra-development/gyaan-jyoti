@@ -7,3 +7,6 @@
 [submodule "modules/java-design"]
 	path = modules/java-design
 	url = git@github.com:infra-development/java-design.git
+[submodule "modules/scala-design"]
+	path = modules/scala-design
+	url = git@github.com:infra-development/scala-design.git
