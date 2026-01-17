@@ -10,3 +10,6 @@
 [submodule "modules/scala-design"]
 	path = modules/scala-design
 	url = git@github.com:infra-development/scala-design.git
+[submodule "modules/spark-sutra"]
+    path = modules/spark-sutra
+    url = git@github.com:infra-development/spark-sutra.git
