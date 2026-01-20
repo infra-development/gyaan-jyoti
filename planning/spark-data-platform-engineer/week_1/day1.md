@@ -66,7 +66,7 @@ By end of Day 1, you must be able to:
     * [https://docs.scala-lang.org/tour/basics.html](https://docs.scala-lang.org/tour/basics.html)
 * Scala Official Docs – Immutability
 
-    * [https://docs.scala-lang.org/scala3/book/immutability.html](https://docs.scala-lang.org/scala3/book/immutability.html)
+    * [https://docs.scala-lang.org/scala3/book/fp-immutable-values.html](https://docs.scala-lang.org/scala3/book/fp-immutable-values.html)
 * YouTube (Free):
 
     * Martin Odersky – Scala introduction (selected parts)
