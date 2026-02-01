@@ -189,7 +189,50 @@ Write 8–10 lines answering:
 
 > Why does Spark prohibit safe usage of mutable shared variables inside transformations?
 
----
+1. Spark transformations assume immutability
+Spark expects transformation functions (`map`, `filter`, `flatMap`) to be pure and side-effect free so that the same input always produces the same output.  
+**Example:**  
+Incrementing a mutable counter inside a `map` makes the result depend on execution order rather than input data.
+
+2. Closures are serialized, not shared
+Scala closures capture variables, but Spark serializes the closure and sends a copy to each executor. The variable is not shared across tasks.  
+**Example:**  
+A mutable variable `var sum = 0` inside a `map` is copied to every executor, so each executor updates its own local copy.
+
+3. Executors run in parallel JVMs
+Each Spark executor runs in its own JVM, meaning there is no shared memory across executors.  
+**Example:**  
+Mutating a `ListBuffer` inside a transformation on one executor cannot be seen by other executors.
+
+4. No single global update point exists
+Spark has no built-in mechanism to safely merge arbitrary mutable updates coming from multiple executors.  
+**Example:**  
+Appending elements to a shared mutable `ArrayBuffer` from multiple partitions cannot be synchronized globally.
+
+5. Task re-execution breaks mutation logic
+Spark may re-run tasks due to failures or speculative execution, causing mutations to be applied multiple times.  
+**Example:**  
+A mutable counter updated inside `foreach` may be incremented twice if a task is retried.
+
+6. Execution order is non-deterministic
+Partitions can execute in any order, so mutations that depend on order lead to inconsistent results.  
+**Example:**  
+Updating a mutable `Map` with partial counts may produce different results across runs.
+
+7. Transformations must be deterministic
+Spark relies on deterministic transformations to recompute data using lineage during failures.  
+**Example:**  
+A transformation that mutates external state cannot be safely recomputed because the state has already changed.
+
+8. Immutability enables fault tolerance
+Immutable operations allow Spark to recompute lost partitions without side effects or corruption.  
+**Example:**  
+Re-running a pure transformation like `map(x => x * 2)` is safe, while re-running a mutation-based update is not.
+
+9. Spark provides controlled alternatives
+Spark allows shared behavior only through well-defined abstractions that preserve correctness.  
+**Example:**  
+Use **Accumulators** for counters and **Broadcast variables** for read-only shared data.
 
 ## 6. Spark Theory References (Day 1 Scope)
 
@@ -214,10 +257,57 @@ Understand *why Spark was designed this way*, not just how to code.
 You must answer confidently, without memorized definitions:
 
 1. Why does Spark rely on immutable data structures?
+- Spark relies on immutability because it cannot trust execution order, location, or repetition in a distributed system.
+Data may be processed on different machines, retried on failure, or recomputed later from lineage. If data were mutable, Spark would have no way to guarantee that recomputation produces the same result. Immutability gives Spark referential transparency, which allows it to freely parallelize, retry, cache, and recompute data without coordination or locks. In short, immutability is what makes Spark predictable under failure.
+
 2. What breaks if you use `var` inside Spark transformations?
+- What breaks is **determinism**.
+
+    When you use var inside a transformation, that variable becomes part of a closure. Spark serializes that closure and ships copies to multiple executors running in different JVMs. Each executor mutates its own copy, tasks may run out of order, and tasks may run more than once due to retries or speculation. As a result:
+
+    - Updates are not shared
+    - Side effects happen multiple times
+    - Results change across runs
+
+    This breaks Spark’s assumptions about correctness, recomputation, and fault tolerance.
+
 3. Difference between `map` and `flatMap` with a real Spark example
+- `map` enforces one-to-one transformation, while `flatMap` allows one-to-many expansion.
+  `flatMap` is essential in Spark for record explosion such as tokenizing text in word count.
 4. Why is Scala a better fit for Spark than Java?
+- Scala matches Spark’s execution model natively, not accidentally.
+
+    Spark is built around:
+
+    - Higher-order functions
+    - Closures
+    - Immutable transformations
+    - Functional composition
+
+    Scala provides:
+
+    - Concise lambda syntax
+    - Immutable-by-default design
+    - First-class functions and pattern matching
+    - Natural expression of DAG-style transformations
+
+    Java can use Spark, but Scala expresses Spark’s mental model directly. That’s why Spark itself is written in Scala, and why advanced Spark APIs feel natural in Scala and verbose in Java.
 5. How does immutability enable Spark fault tolerance and recomputation?
+- Spark does not recover data by restoring memory—it recomputes it.
+
+    Each RDD/DataFrame remembers how it was derived (lineage). If a partition is lost:
+
+    1. Spark goes back to the lineage
+    2. Re-runs the transformations
+    3. Regenerates the exact same data
+    
+    This only works because:
+
+    - Transformations are immutable
+    - Inputs are not modified
+    - Same inputs always produce same outputs
+
+    If data were mutable, recomputation would replay transformations on already-modified state, producing incorrect results. Immutability is what makes **lineage-based fault tolerance mathematically valid**.
 
 ---
 
