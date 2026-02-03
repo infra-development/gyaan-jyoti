@@ -69,10 +69,10 @@ By the end of Day 2, you must be able to:
 
 * Scala Official Docs – Options
 
-    * [https://docs.scala-lang.org/overviews/scala-book/options.html](https://docs.scala-lang.org/overviews/scala-book/options.html)
+    * [https://www.scala-lang.org/api/current/scala/Option.html](https://www.scala-lang.org/api/current/scala/Option.html)
 * Scala Tour – Option
 
-    * [https://docs.scala-lang.org/tour/options.html](https://docs.scala-lang.org/tour/options.html)
+    * [https://docs.scala-lang.org/overviews/collections-2.13/conversion-between-option-and-the-collections.html](https://docs.scala-lang.org/overviews/collections-2.13/conversion-between-option-and-the-collections.html)
 * YouTube (Free):
 
     * Rock the JVM – *Scala Option Explained*
@@ -94,7 +94,7 @@ You should never need `.get` in production Spark code.
 
 * Scala Official Docs – Try
 
-    * [https://docs.scala-lang.org/overviews/scala-book/try-success-failure.html](https://docs.scala-lang.org/overviews/scala-book/try-success-failure.html)
+    * [https://docs.scala-lang.org/overviews/scala-book/functional-error-handling.html](https://docs.scala-lang.org/overviews/scala-book/functional-error-handling.html)
 * Rock the JVM – *Try in Scala*
 
 ---
@@ -111,7 +111,7 @@ You should never need `.get` in production Spark code.
 
 * Scala Tour – Either
 
-    * [https://docs.scala-lang.org/tour/either.html](https://docs.scala-lang.org/tour/either.html)
+    * [https://www.scala-lang.org/api/current/scala/util/Either.html](https://www.scala-lang.org/api/current/scala/util/Either.html)
 * Rock the JVM – *Either Explained*
 
 ---
