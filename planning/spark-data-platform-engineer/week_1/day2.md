@@ -203,10 +203,110 @@ You must be able to explain:
 * How exceptions inside tasks lead to retries and stage failures
 * Why modeling bad data explicitly improves pipeline reliability
 
-**Written Exercise:**
-Write 6–8 lines answering:
+- **Nulls are dangerous because they crash at runtime**
+  - Example:
+    ```scala
+    rdd.map(r => r.getString(1).toInt)
+    ```
+  - If `getString(1)` is `null`, a `NullPointerException` is thrown during task execution.
+
+- **Null-related failures appear far from the data source**
+  - Example:
+    - Data is read successfully from CSV or Parquet.
+    - Failure occurs later inside a transformation like `map` or `filter`.
+  - This makes it hard to identify which input record caused the issue.
+
+- **Exceptions inside Spark tasks trigger retries**
+  - Example:
+    - A single malformed record causes a `NumberFormatException`.
+    - Spark retries the same task multiple times on different executors.
+
+- **Repeated task failures cause stage failure**
+  - Example:
+    - The same bad record exists in the partition.
+    - Every retry fails consistently.
+    - Spark marks the stage as failed and aborts the job.
+
+- **One bad record can stop processing of many valid records**
+  - Example:
+    - A partition contains 10,000 records.
+    - One invalid record throws an exception.
+    - The remaining 9,999 valid records are never processed.
+
+- **Modeling bad data explicitly turns failures into values**
+  - Example:
+    ```scala
+    Either[String, Int]
+    ```
+  - `Left("salary is null for id=5")` flows through the pipeline safely.
+
+- **Valid and invalid data can be handled separately**
+  - Example:
+    - `Right(50000)` is written to the main fact table.
+    - `Left(error)` is written to an error or reject table.
+
+- **Explicit error modeling improves reliability and observability**
+  - Example:
+    - Count or log `Left` records to monitor data quality.
+    - Spark job completes successfully without crashing.
 
 > How would you handle malformed records in a Spark job without failing the entire pipeline?
+
+- **Validate records explicitly during parsing**
+  - Do not assume input data is clean.
+  - Example:
+    ```scala
+    def parseSalary(s: String): Either[String, Int] =
+      if (s != null && s.forall(_.isDigit)) Right(s.toInt)
+      else Left(s"Invalid salary: $s")
+    ```
+
+- **Model malformed records as data, not exceptions**
+  - Use `Either` or `Option` instead of throwing errors.
+  - Example:
+    ```scala
+    RDD[Either[String, CleanRecord]]
+    ```
+  - `Right` represents valid data, `Left` represents malformed data with an error reason.
+
+- **Split valid and invalid records into separate pipelines**
+  - This prevents bad data from stopping good data.
+  - Example:
+    ```scala
+    val parsed = rdd.map(parse)
+    val valid  = parsed.collect { case Right(v) => v }
+    val errors = parsed.collect { case Left(e)  => e }
+    ```
+
+- **Persist only clean records**
+  - Write valid data to the main sink (Hive, Parquet, Delta).
+  - Example:
+    ```scala
+    valid.toDF.write.parquet("/data/clean")
+    ```
+
+- **Route malformed records to an error sink**
+  - Store bad records for auditing, debugging, or reprocessing.
+  - Example:
+    ```scala
+    errors.toDF.write.parquet("/data/errors")
+    ```
+
+- **Avoid throwing exceptions inside Spark transformations**
+  - Exceptions cause task retries and stage failures.
+  - Prefer total functions that always return a value.
+
+- **Track data quality metrics**
+  - Count or log malformed records without failing the job.
+  - Example:
+    ```scala
+    val errorCount = errors.count()
+    ```
+
+- **Result: a resilient Spark pipeline**
+  - Valid data continues to flow.
+  - Bad data is isolated, visible, and manageable.
+
 
 ---
 
@@ -237,6 +337,37 @@ You must answer confidently and clearly:
 5. How does pattern matching improve Spark code readability and safety?
 
 ---
+
+### Q1. Why is `Option` preferred over `null` in Spark jobs?
+**Answer:**  
+`Option` is preferred because it makes missing data explicit and type-safe, whereas `null` bypasses the type system. Using `null` can cause `NullPointerException`s during Spark transformations, often far from where the data was read. `Option` forces the developer to handle the absence of a value explicitly using pattern matching or combinators like `map` and `flatMap`. This results in safer, total functions that behave reliably in distributed Spark execution.
+
+---
+
+### Q2. What happens if a Spark task throws an exception?
+**Answer:**  
+When a Spark task throws an exception, Spark marks the task as failed and retries it on another executor. By default, Spark retries a task multiple times. If the exception is deterministic, such as one caused by bad data, every retry fails in the same way. After the retry limit is exceeded, Spark fails the entire stage and aborts the job, wasting cluster resources due to repeated recomputation.
+
+---
+
+### Q3. When would you use `Either` instead of `Try`?
+**Answer:**  
+`Either` is used when failure is an expected business outcome, such as validation errors or malformed input data. `Try` is designed for exception-based failures and carries JVM exceptions, which are expensive and problematic in distributed Spark jobs. `Either` allows failures to be modeled explicitly using domain-specific error values, making pipelines more predictable, debuggable, and safe.
+
+---
+
+### Q4. How do you handle bad records without failing a Spark job?
+**Answer:**  
+Bad records are handled by treating them as data rather than throwing exceptions. During parsing or validation, each record is converted into an `Either`, where valid records become `Right` and invalid records become `Left` with an error reason. The pipeline is then split so that valid records continue through the main processing path while invalid records are written to an error or reject sink. This allows the Spark job to complete successfully while preserving full visibility into data quality issues.
+
+---
+
+### Q5. How does pattern matching improve Spark code readability and safety?
+**Answer:**  
+Pattern matching makes all possible data states explicit in Spark code, such as `Some` and `None` for `Option`, or `Right` and `Left` for `Either`. It avoids unsafe operations like calling `.get` and allows the compiler to warn about missing cases. This leads to clearer, more maintainable code and prevents runtime failures, which is especially important in distributed Spark applications.
+
+---
+
 
 ## 8. Day Completion Checklist (Gate)
 
